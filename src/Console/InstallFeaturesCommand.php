@@ -19,7 +19,7 @@ use function Laravel\Prompts\warning;
 
 class InstallFeaturesCommand extends Command
 {
-    protected $signature = 'install:features';
+    protected $signature = 'install:features {--answers= : JSON string of answers to skip interactive prompts}';
 
     protected $description = 'Run the starter kit post-install script to add or remove features';
 
@@ -47,21 +47,23 @@ class InstallFeaturesCommand extends Command
             return self::FAILURE;
         }
 
-        // ── Warn about destructive changes ──────────────────────────────
+        // ── Collect answers ───────────────────────────────────────────
 
-        warning('This will modify files in: '.$directory);
-        note('Make sure you can restore changes (e.g. git checkout).');
+        if ($this->option('answers')) {
+            $answers = json_decode($this->option('answers'), true, 512, JSON_THROW_ON_ERROR);
+        } else {
+            warning('This will modify files in: '.$directory);
+            note('Make sure you can restore changes (e.g. git checkout).');
 
-        if (! confirm('Continue?', default: false)) {
-            return self::SUCCESS;
-        }
+            if (! confirm('Continue?', default: false)) {
+                return self::SUCCESS;
+            }
 
-        // ── Prompt for answers ──────────────────────────────────────────
+            $answers = [];
 
-        $answers = [];
-
-        foreach ($prompts as $prompt) {
-            $answers[$prompt['name']] = $this->promptForAnswer($prompt);
+            foreach ($prompts as $prompt) {
+                $answers[$prompt['name']] = $this->promptForAnswer($prompt);
+            }
         }
 
         info('Answers: '.json_encode($answers, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
