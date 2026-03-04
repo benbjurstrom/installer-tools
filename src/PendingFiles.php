@@ -22,7 +22,7 @@ class PendingFiles
     public function replace(string $search, string $replace): void
     {
         foreach ($this->paths as $path) {
-            $this->file->replaceInFile($path, $search, $replace);
+            $this->file->replace($path, $search, $replace);
         }
     }
 
@@ -36,14 +36,14 @@ class PendingFiles
     public function replaceLine(string $search, string $replace): void
     {
         foreach ($this->paths as $path) {
-            $this->file->replaceLineInFile($path, $search, $replace);
+            $this->file->replaceLine($path, $search, $replace);
         }
     }
 
     public function append(string $content): void
     {
         foreach ($this->paths as $path) {
-            $this->file->appendToFile($path, $content);
+            $this->file->append($path, $content);
         }
     }
 
@@ -64,14 +64,14 @@ class PendingFiles
     public function removeSection(string $tag): void
     {
         foreach ($this->paths as $path) {
-            $this->file->removeBlock($path, $tag);
+            $this->file->removeSection($path, $tag);
         }
     }
 
     public function removeSectionMarkers(string $tag): void
     {
         foreach ($this->paths as $path) {
-            $this->file->stripBlock($path, $tag);
+            $this->file->removeSectionMarkers($path, $tag);
         }
     }
 

@@ -3,6 +3,7 @@
 namespace Laravel\InstallerTools\Tools\Php\Visitors;
 
 use PhpParser\Node\Stmt\Use_;
+use PhpParser\Node\UseItem;
 use PhpParser\NodeVisitorAbstract;
 
 class RemoveImportVisitor extends NodeVisitorAbstract
@@ -26,7 +27,7 @@ class RemoveImportVisitor extends NodeVisitorAbstract
 
         foreach ($statements as $stmt) {
             if ($stmt instanceof Use_) {
-                $remaining = array_filter($stmt->uses, function (\PhpParser\Node\UseItem $use): bool {
+                $remaining = array_filter($stmt->uses, function (UseItem $use): bool {
                     $fqcn = $use->name->toString();
 
                     foreach ($this->imports as $import) {

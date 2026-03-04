@@ -29,7 +29,7 @@ class File
         }
     }
 
-    public function replaceInFile(string $file, string $search, string $replace): void
+    public function replace(string $file, string $search, string $replace): void
     {
         $path = $this->directory.'/'.$file;
 
@@ -50,7 +50,7 @@ class File
         file_put_contents($path, implode("\n", $lines));
     }
 
-    public function replaceLineInFile(string $file, string $search, string $replace): void
+    public function replaceLine(string $file, string $search, string $replace): void
     {
         $path = $this->directory.'/'.$file;
 
@@ -88,7 +88,7 @@ class File
         file_put_contents($path, implode("\n", $lines));
     }
 
-    public function appendToFile(string $file, string $content): void
+    public function append(string $file, string $content): void
     {
         $path = $this->directory.'/'.$file;
 
@@ -112,7 +112,7 @@ class File
         file_put_contents($path, implode("\n", $lines));
     }
 
-    public function stripBlock(string $file, string $tag): void
+    public function removeSectionMarkers(string $file, string $tag): void
     {
         $path = $this->directory.'/'.$file;
 
@@ -135,7 +135,7 @@ class File
         file_put_contents($path, implode("\n", $result));
     }
 
-    public function removeBlock(string $file, string $tag): void
+    public function removeSection(string $file, string $tag): void
     {
         $path = $this->directory.'/'.$file;
 

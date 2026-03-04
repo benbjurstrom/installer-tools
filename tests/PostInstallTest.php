@@ -20,13 +20,10 @@ afterEach(function (): void {
 });
 
 it('calls callback when selected value is in array', function (): void {
-    $answersPath = $this->tempDir.'/answers.json';
-    file_put_contents($answersPath, json_encode(['features' => ['2fa', 'passkeys']]));
-
     $called = false;
 
     PostInstall::in($this->tempDir)
-        ->withAnswers($answersPath)
+        ->withAnswers(json_encode(['features' => ['2fa', 'passkeys']]))
         ->selected('features', '2fa', then: function () use (&$called): void {
             $called = true;
         });
@@ -35,13 +32,10 @@ it('calls callback when selected value is in array', function (): void {
 });
 
 it('does not call callback when selected value is not in array', function (): void {
-    $answersPath = $this->tempDir.'/answers.json';
-    file_put_contents($answersPath, json_encode(['features' => ['2fa']]));
-
     $called = false;
 
     PostInstall::in($this->tempDir)
-        ->withAnswers($answersPath)
+        ->withAnswers(json_encode(['features' => ['2fa']]))
         ->selected('features', 'passkeys', then: function () use (&$called): void {
             $called = true;
         });
@@ -50,13 +44,10 @@ it('does not call callback when selected value is not in array', function (): vo
 });
 
 it('calls callback when confirmed is true', function (): void {
-    $answersPath = $this->tempDir.'/answers.json';
-    file_put_contents($answersPath, json_encode(['seed' => true]));
-
     $called = false;
 
     PostInstall::in($this->tempDir)
-        ->withAnswers($answersPath)
+        ->withAnswers(json_encode(['seed' => true]))
         ->confirmed('seed', then: function () use (&$called): void {
             $called = true;
         });
@@ -65,13 +56,10 @@ it('calls callback when confirmed is true', function (): void {
 });
 
 it('does not call callback when confirmed is false', function (): void {
-    $answersPath = $this->tempDir.'/answers.json';
-    file_put_contents($answersPath, json_encode(['seed' => false]));
-
     $called = false;
 
     PostInstall::in($this->tempDir)
-        ->withAnswers($answersPath)
+        ->withAnswers(json_encode(['seed' => false]))
         ->confirmed('seed', then: function () use (&$called): void {
             $called = true;
         });
@@ -80,13 +68,10 @@ it('does not call callback when confirmed is false', function (): void {
 });
 
 it('calls callback when answered value matches', function (): void {
-    $answersPath = $this->tempDir.'/answers.json';
-    file_put_contents($answersPath, json_encode(['stack' => 'react']));
-
     $called = false;
 
     PostInstall::in($this->tempDir)
-        ->withAnswers($answersPath)
+        ->withAnswers(json_encode(['stack' => 'react']))
         ->answered('stack', 'react', then: function () use (&$called): void {
             $called = true;
         });
@@ -95,13 +80,10 @@ it('calls callback when answered value matches', function (): void {
 });
 
 it('does not call callback when answered value differs', function (): void {
-    $answersPath = $this->tempDir.'/answers.json';
-    file_put_contents($answersPath, json_encode(['stack' => 'vue']));
-
     $called = false;
 
     PostInstall::in($this->tempDir)
-        ->withAnswers($answersPath)
+        ->withAnswers(json_encode(['stack' => 'vue']))
         ->answered('stack', 'react', then: function () use (&$called): void {
             $called = true;
         });

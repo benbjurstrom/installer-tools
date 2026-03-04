@@ -3,6 +3,7 @@
 namespace Laravel\InstallerTools\Tools\Php\Visitors;
 
 use PhpParser\Node;
+use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\NodeVisitorAbstract;
 
@@ -28,6 +29,6 @@ class RemoveInterfaceVisitor extends NodeVisitorAbstract
 
     protected function removeInterfacesFromClass(Class_ $class): void
     {
-        $class->implements = array_values(array_filter($class->implements, fn (\PhpParser\Node\Name $interface): bool => ! in_array($this->simpleName($interface->toString()), $this->interfaces)));
+        $class->implements = array_values(array_filter($class->implements, fn (Name $interface): bool => ! in_array($this->simpleName($interface->toString()), $this->interfaces)));
     }
 }

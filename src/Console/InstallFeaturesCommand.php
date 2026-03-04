@@ -3,7 +3,6 @@
 namespace Laravel\InstallerTools\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Filesystem\Filesystem;
 use Symfony\Component\Process\PhpExecutableFinder;
 use Symfony\Component\Process\Process;
 
@@ -14,18 +13,19 @@ use function Laravel\Prompts\warning;
 
 class InstallFeaturesCommand extends Command
 {
-    protected $signature = 'install:features {--answers= : JSON string of answers to skip interactive prompts}';
+    protected $signature = 'install:features
+        {--path=post-install.php : Path to the post-install script}
+        {--answers= : JSON string of answers to skip interactive prompts}';
 
     protected $description = 'Run the starter kit post-install script to add or remove features';
 
     public function handle(): int
     {
         $directory = $this->laravel->basePath();
-        $kitDirectory = $directory.'/.laravel-installer';
-        $scriptPath = $kitDirectory.'/post-install.php';
+        $scriptPath = $directory.'/'.$this->option('path');
 
         if (! file_exists($scriptPath)) {
-            $this->components->error('No post-install script found at .laravel-installer/post-install.php');
+            $this->components->error('No post-install script found at '.$this->option('path'));
 
             return self::FAILURE;
         }
@@ -52,49 +52,40 @@ class InstallFeaturesCommand extends Command
         }
 
         $args = [$php, $scriptPath];
-        $answersFile = null;
 
         if ($this->option('answers')) {
-            $answersFile = tempnam(sys_get_temp_dir(), 'kit-answers-');
-            file_put_contents($answersFile, $this->option('answers'));
-            $args[] = $answersFile;
+            $args[] = $this->option('answers');
         }
 
-        try {
-            $process = new Process(
-                $args,
-                $directory,
-                ['LARAVEL_INSTALLER_AUTOLOADER' => $this->laravel->basePath('vendor/autoload.php')],
-            );
+        $process = new Process(
+            $args,
+            $directory,
+            ['LARAVEL_INSTALLER_AUTOLOADER' => $this->laravel->basePath('vendor/autoload.php')],
+        );
 
-            $process->setTimeout(null);
+        $process->setTimeout(null);
 
-            if (! $this->option('answers') && Process::isTtySupported()) {
-                $process->setTty(true);
-            }
-
-            $process->run(function ($type, string $line): void {
-                $this->output->write('    '.$line);
-            });
-
-            if ($process->isSuccessful()) {
-                info('Post-install script completed successfully.');
-
-                (new Filesystem)->deleteDirectory($kitDirectory);
-
-                $this->rebuildAssets($directory);
-
-                return self::SUCCESS;
-            }
-
-            $this->components->error('Post-install script failed with exit code: '.$process->getExitCode());
-
-            return $process->getExitCode();
-        } finally {
-            if ($answersFile !== null && file_exists($answersFile)) {
-                unlink($answersFile);
-            }
+        if (! $this->option('answers') && Process::isTtySupported()) {
+            $process->setTty(true);
         }
+
+        $process->run(function ($type, string $line): void {
+            $this->output->write('    '.$line);
+        });
+
+        if ($process->isSuccessful()) {
+            info('Post-install script completed successfully.');
+
+            unlink($scriptPath);
+
+            $this->rebuildAssets($directory);
+
+            return self::SUCCESS;
+        }
+
+        $this->components->error('Post-install script failed with exit code: '.$process->getExitCode());
+
+        return $process->getExitCode();
     }
 
     protected function rebuildAssets(string $directory): void

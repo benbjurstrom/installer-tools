@@ -12,10 +12,7 @@ use Laravel\InstallerTools\Tools\Php\PhpFile;
 
 use function Laravel\Prompts\confirm as promptConfirm;
 use function Laravel\Prompts\multiselect as promptMultiselect;
-use function Laravel\Prompts\password as promptPassword;
 use function Laravel\Prompts\select as promptSelect;
-use function Laravel\Prompts\suggest as promptSuggest;
-use function Laravel\Prompts\text as promptText;
 
 /** @phpstan-consistent-constructor */
 class PostInstall
@@ -36,35 +33,16 @@ class PostInstall
 
     // Answers ----------------------------------------------------------------
 
-    public function withAnswers(?string $path): static
+    public function withAnswers(?string $json): static
     {
-        if ($path !== null && file_exists($path)) {
-            $this->answers = json_decode(file_get_contents($path), true);
+        if ($json !== null) {
+            $this->answers = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         }
 
         return $this;
     }
 
-    public function answer(string $key, mixed $default = null): mixed
-    {
-        return $this->answers[$key] ?? $default;
-    }
-
     // Prompts ----------------------------------------------------------------
-
-    public function text(string $name, string $label, string $placeholder = '', string $default = '', bool|string $required = false, string $hint = ''): static
-    {
-        $this->answers[$name] ??= promptText($label, $placeholder, $default, $required, hint: $hint);
-
-        return $this;
-    }
-
-    public function password(string $name, string $label, string $placeholder = '', bool|string $required = false, string $hint = ''): static
-    {
-        $this->answers[$name] ??= promptPassword($label, $placeholder, $required, hint: $hint);
-
-        return $this;
-    }
 
     public function confirm(string $name, string $label, bool $default = true, string $hint = ''): static
     {
@@ -83,13 +61,6 @@ class PostInstall
     public function multiselect(string $name, string $label, array $options, array $default = [], string $hint = '', bool|string $required = false): static
     {
         $this->answers[$name] ??= promptMultiselect($label, $options, $default, required: $required, hint: $hint);
-
-        return $this;
-    }
-
-    public function suggest(string $name, string $label, array|Closure $options, string $placeholder = '', string $default = '', string $hint = ''): static
-    {
-        $this->answers[$name] ??= promptSuggest($label, $options, $placeholder, $default, hint: $hint);
 
         return $this;
     }
@@ -194,5 +165,10 @@ class PostInstall
     public function phpFile(string $path): PhpFile
     {
         return new PhpFile($this->path($path));
+    }
+
+    private function answer(string $key, mixed $default = null): mixed
+    {
+        return $this->answers[$key] ?? $default;
     }
 }
