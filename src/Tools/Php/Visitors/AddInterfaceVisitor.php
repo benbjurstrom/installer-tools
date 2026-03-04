@@ -6,7 +6,6 @@ use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\NodeVisitorAbstract;
-use RuntimeException;
 
 class AddInterfaceVisitor extends NodeVisitorAbstract
 {
@@ -23,19 +22,7 @@ class AddInterfaceVisitor extends NodeVisitorAbstract
 
     public function beforeTraverse(array $nodes): ?array
     {
-        $hasClass = false;
-
-        foreach ($this->getStatements($nodes) as $node) {
-            if ($node instanceof Class_) {
-                $hasClass = true;
-
-                break;
-            }
-        }
-
-        if (! $hasClass) {
-            throw new RuntimeException('Class declaration not found.');
-        }
+        $this->requireClass($nodes);
 
         return $nodes;
     }
@@ -49,18 +36,13 @@ class AddInterfaceVisitor extends NodeVisitorAbstract
 
     protected function addInterfacesToClass(Class_ $class): void
     {
-        $existingNames = [];
-
-        foreach ($class->implements as $interface) {
-            $parts = explode('\\', $interface->toString());
-            $existingNames[] = end($parts);
-        }
+        $existingNames = array_map(
+            fn (\PhpParser\Node\Name $interface): string => $this->simpleName($interface->toString()),
+            $class->implements,
+        );
 
         foreach ($this->interfaces as $interface) {
-            $parts = explode('\\', $interface);
-            $simpleName = end($parts);
-
-            if (! in_array($simpleName, $existingNames)) {
+            if (! in_array($this->simpleName($interface), $existingNames)) {
                 $class->implements[] = new Name($interface);
             }
         }

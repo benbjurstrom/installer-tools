@@ -5,9 +5,7 @@ namespace Laravel\InstallerTools\Tools\Php;
 use Laravel\InstallerTools\Tools\Php\Visitors\AddImportVisitor;
 use Laravel\InstallerTools\Tools\Php\Visitors\AddInterfaceVisitor;
 use Laravel\InstallerTools\Tools\Php\Visitors\AddMethodVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\AddToArrayVisitor;
 use Laravel\InstallerTools\Tools\Php\Visitors\AddTraitVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\RemoveFromArrayVisitor;
 use Laravel\InstallerTools\Tools\Php\Visitors\RemoveImportVisitor;
 use Laravel\InstallerTools\Tools\Php\Visitors\RemoveInterfaceVisitor;
 use Laravel\InstallerTools\Tools\Php\Visitors\RemoveMethodVisitor;
@@ -63,26 +61,6 @@ class PhpFile
     public function removeImport(string $class): static
     {
         $this->edits[] = new RemoveImportVisitor($class);
-
-        return $this;
-    }
-
-    public function addToArray(string $target, mixed ...$args): static
-    {
-        if (count($args) === 1) {
-            $this->edits[] = new AddToArrayVisitor($target, null, $args[0]);
-        } elseif (count($args) === 2) {
-            $this->edits[] = new AddToArrayVisitor($target, $args[0], $args[1]);
-        } else {
-            throw new \InvalidArgumentException('addToArray expects 2 or 3 arguments.');
-        }
-
-        return $this;
-    }
-
-    public function removeFromArray(string $target, string $search): static
-    {
-        $this->edits[] = new RemoveFromArrayVisitor($target, $search);
 
         return $this;
     }

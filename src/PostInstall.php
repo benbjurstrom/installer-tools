@@ -10,6 +10,13 @@ use Laravel\InstallerTools\Tools\File;
 use Laravel\InstallerTools\Tools\Npm;
 use Laravel\InstallerTools\Tools\Php\PhpFile;
 
+use function Laravel\Prompts\confirm as promptConfirm;
+use function Laravel\Prompts\multiselect as promptMultiselect;
+use function Laravel\Prompts\password as promptPassword;
+use function Laravel\Prompts\select as promptSelect;
+use function Laravel\Prompts\suggest as promptSuggest;
+use function Laravel\Prompts\text as promptText;
+
 /** @phpstan-consistent-constructor */
 class PostInstall
 {
@@ -29,9 +36,11 @@ class PostInstall
 
     // Answers ----------------------------------------------------------------
 
-    public function withAnswers(string $path): static
+    public function withAnswers(?string $path): static
     {
-        $this->answers = json_decode(file_get_contents($path), true);
+        if ($path !== null && file_exists($path)) {
+            $this->answers = json_decode(file_get_contents($path), true);
+        }
 
         return $this;
     }
@@ -41,34 +50,86 @@ class PostInstall
         return $this->answers[$key] ?? $default;
     }
 
-    public function selected(string $key, string $value, callable $callback, ?callable $otherwise = null): static
+    // Prompts ----------------------------------------------------------------
+
+    public function text(string $name, string $label, string $placeholder = '', string $default = '', bool|string $required = false, string $hint = ''): static
+    {
+        $this->answers[$name] ??= promptText($label, $placeholder, $default, $required, hint: $hint);
+
+        return $this;
+    }
+
+    public function password(string $name, string $label, string $placeholder = '', bool|string $required = false, string $hint = ''): static
+    {
+        $this->answers[$name] ??= promptPassword($label, $placeholder, $required, hint: $hint);
+
+        return $this;
+    }
+
+    public function confirm(string $name, string $label, bool $default = true, string $hint = ''): static
+    {
+        $this->answers[$name] ??= promptConfirm($label, $default, hint: $hint);
+
+        return $this;
+    }
+
+    public function select(string $name, string $label, array $options, int|string|null $default = null, string $hint = ''): static
+    {
+        $this->answers[$name] ??= promptSelect($label, $options, $default, hint: $hint);
+
+        return $this;
+    }
+
+    public function multiselect(string $name, string $label, array $options, array $default = [], string $hint = '', bool|string $required = false): static
+    {
+        $this->answers[$name] ??= promptMultiselect($label, $options, $default, required: $required, hint: $hint);
+
+        return $this;
+    }
+
+    public function suggest(string $name, string $label, array|Closure $options, string $placeholder = '', string $default = '', string $hint = ''): static
+    {
+        $this->answers[$name] ??= promptSuggest($label, $options, $placeholder, $default, hint: $hint);
+
+        return $this;
+    }
+
+    // Branching --------------------------------------------------------------
+
+    public function selected(string $key, string $value, ?callable $then = null, ?callable $else = null): static
     {
         if (in_array($value, $this->answer($key, []))) {
-            $callback($this);
-        } elseif ($otherwise) {
-            $otherwise($this);
+            if ($then) {
+                $then($this);
+            }
+        } elseif ($else) {
+            $else($this);
         }
 
         return $this;
     }
 
-    public function confirmed(string $key, callable $callback, ?callable $otherwise = null): static
+    public function confirmed(string $key, ?callable $then = null, ?callable $else = null): static
     {
         if ($this->answer($key, false)) {
-            $callback($this);
-        } elseif ($otherwise) {
-            $otherwise($this);
+            if ($then) {
+                $then($this);
+            }
+        } elseif ($else) {
+            $else($this);
         }
 
         return $this;
     }
 
-    public function answered(string $key, mixed $value, callable $callback, ?callable $otherwise = null): static
+    public function answered(string $key, mixed $value, ?callable $then = null, ?callable $else = null): static
     {
         if ($this->answer($key) === $value) {
-            $callback($this);
-        } elseif ($otherwise) {
-            $otherwise($this);
+            if ($then) {
+                $then($this);
+            }
+        } elseif ($else) {
+            $else($this);
         }
 
         return $this;
@@ -76,95 +137,26 @@ class PostInstall
 
     // File operations --------------------------------------------------------
 
-    public function copy(string $from, string $to): static
+    public function files(string ...$paths): PendingFiles
     {
-        $this->file()->copy($from, $to);
-
-        return $this;
+        return new PendingFiles(new File($this->directory), $paths);
     }
 
-    public function delete(string ...$paths): static
+    public function file(string ...$paths): PendingFiles
     {
-        $this->file()->delete(...$paths);
-
-        return $this;
-    }
-
-    public function replaceInFile(string $file, string $search, string $replace): static
-    {
-        $this->file()->replaceInFile($file, $search, $replace);
-
-        return $this;
-    }
-
-    public function deleteLinesContaining(string $file, string $content): static
-    {
-        $this->file()->deleteLinesContaining($file, $content);
-
-        return $this;
-    }
-
-    public function appendToFile(string $file, string $content): static
-    {
-        $this->file()->appendToFile($file, $content);
-
-        return $this;
-    }
-
-    public function uncomment(string $file, string $search): static
-    {
-        $this->file()->uncomment($file, $search);
-
-        return $this;
-    }
-
-    public function stripBlock(string $file, string $tag): static
-    {
-        $this->file()->stripBlock($file, $tag);
-
-        return $this;
-    }
-
-    public function removeBlock(string $file, string $tag): static
-    {
-        $this->file()->removeBlock($file, $tag);
-
-        return $this;
-    }
-
-    public function publish(string $from): static
-    {
-        $this->file()->publish($from);
-
-        return $this;
+        return $this->files(...$paths);
     }
 
     // Package and command tools ----------------------------------------------
 
-    public function composer(string $command, string ...$packages): static
+    public function composer(): Composer
     {
-        $composer = new Composer($this->directory);
-
-        match ($command) {
-            'require' => $composer->require(...$packages),
-            'require-dev' => $composer->requireDev(...$packages),
-            'remove' => $composer->remove(...$packages),
-        };
-
-        return $this;
+        return new Composer($this->directory);
     }
 
-    public function npm(string $command, string ...$packages): static
+    public function npm(): Npm
     {
-        $npm = new Npm($this->directory);
-
-        match ($command) {
-            'install' => $npm->install(...$packages),
-            'install-dev' => $npm->installDev(...$packages),
-            'remove' => $npm->remove(...$packages),
-        };
-
-        return $this;
+        return new Npm($this->directory);
     }
 
     public function artisan(string $command): static
@@ -199,15 +191,8 @@ class PostInstall
 
     // PHP AST ----------------------------------------------------------------
 
-    public function php(string $path): PhpFile
+    public function phpFile(string $path): PhpFile
     {
         return new PhpFile($this->path($path));
-    }
-
-    // Helpers ----------------------------------------------------------------
-
-    protected function file(): File
-    {
-        return new File($this->directory);
     }
 }

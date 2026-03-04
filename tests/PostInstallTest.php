@@ -27,7 +27,7 @@ it('calls callback when selected value is in array', function (): void {
 
     PostInstall::in($this->tempDir)
         ->withAnswers($answersPath)
-        ->selected('features', '2fa', function () use (&$called): void {
+        ->selected('features', '2fa', then: function () use (&$called): void {
             $called = true;
         });
 
@@ -42,7 +42,7 @@ it('does not call callback when selected value is not in array', function (): vo
 
     PostInstall::in($this->tempDir)
         ->withAnswers($answersPath)
-        ->selected('features', 'passkeys', function () use (&$called): void {
+        ->selected('features', 'passkeys', then: function () use (&$called): void {
             $called = true;
         });
 
@@ -57,7 +57,7 @@ it('calls callback when confirmed is true', function (): void {
 
     PostInstall::in($this->tempDir)
         ->withAnswers($answersPath)
-        ->confirmed('seed', function () use (&$called): void {
+        ->confirmed('seed', then: function () use (&$called): void {
             $called = true;
         });
 
@@ -72,7 +72,7 @@ it('does not call callback when confirmed is false', function (): void {
 
     PostInstall::in($this->tempDir)
         ->withAnswers($answersPath)
-        ->confirmed('seed', function () use (&$called): void {
+        ->confirmed('seed', then: function () use (&$called): void {
             $called = true;
         });
 
@@ -87,7 +87,7 @@ it('calls callback when answered value matches', function (): void {
 
     PostInstall::in($this->tempDir)
         ->withAnswers($answersPath)
-        ->answered('stack', 'react', function () use (&$called): void {
+        ->answered('stack', 'react', then: function () use (&$called): void {
             $called = true;
         });
 
@@ -102,7 +102,7 @@ it('does not call callback when answered value differs', function (): void {
 
     PostInstall::in($this->tempDir)
         ->withAnswers($answersPath)
-        ->answered('stack', 'react', function () use (&$called): void {
+        ->answered('stack', 'react', then: function () use (&$called): void {
             $called = true;
         });
 
@@ -113,7 +113,7 @@ it('copies a file', function (): void {
     mkdir($this->tempDir.'/src');
     file_put_contents($this->tempDir.'/src/original.txt', 'hello');
 
-    PostInstall::in($this->tempDir)->copy('src/original.txt', 'dest/copied.txt');
+    PostInstall::in($this->tempDir)->file('src/original.txt')->copyTo('dest/copied.txt');
 
     expect($this->tempDir.'/dest/copied.txt')
         ->toBeFile()
@@ -123,7 +123,7 @@ it('copies a file', function (): void {
 it('replaces content in a file', function (): void {
     file_put_contents($this->tempDir.'/config.txt', 'APP_NAME=Laravel');
 
-    PostInstall::in($this->tempDir)->replaceInFile('config.txt', 'Laravel', 'MyApp');
+    PostInstall::in($this->tempDir)->file('config.txt')->replace('Laravel', 'MyApp');
 
     expect(file_get_contents($this->tempDir.'/config.txt'))->toBe('APP_NAME=MyApp');
 });

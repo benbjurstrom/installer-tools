@@ -34,12 +34,7 @@ class RemoveTraitVisitor extends NodeVisitorAbstract
                 continue;
             }
 
-            $remaining = array_filter($stmt->traits, function (\PhpParser\Node\Name $trait): bool {
-                $parts = explode('\\', $trait->toString());
-                $simpleName = end($parts);
-
-                return ! in_array($simpleName, $this->traits);
-            });
+            $remaining = array_filter($stmt->traits, fn (\PhpParser\Node\Name $trait): bool => ! in_array($this->simpleName($trait->toString()), $this->traits));
 
             if ($remaining === []) {
                 unset($class->stmts[$index]);

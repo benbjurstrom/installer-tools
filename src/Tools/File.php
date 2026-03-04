@@ -39,7 +39,7 @@ class File
         );
     }
 
-    public function deleteLinesContaining(string $file, string $content): void
+    public function removeLinesContaining(string $file, string $content): void
     {
         $path = $this->directory.'/'.$file;
 

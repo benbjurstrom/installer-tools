@@ -2,7 +2,6 @@
 
 namespace Laravel\InstallerTools\Tools\Php\Visitors;
 
-use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Use_;
 use PhpParser\Node\UseItem;
@@ -28,8 +27,7 @@ class AddImportVisitor extends NodeVisitorAbstract
             throw new RuntimeException('Class, interface, or trait declaration not found.');
         }
 
-        $isNamespaced = count($nodes) === 1 && $nodes[0] instanceof Node\Stmt\Namespace_;
-        $statements = $isNamespaced ? $nodes[0]->stmts : $nodes;
+        $statements = $this->getStatements($nodes);
 
         $existingImports = [];
         $lastImportIndex = -1;
@@ -57,11 +55,7 @@ class AddImportVisitor extends NodeVisitorAbstract
 
             array_splice($statements, $insertAt, 0, $newImports);
 
-            if ($isNamespaced) {
-                $nodes[0]->stmts = $statements;
-            } else {
-                return $statements;
-            }
+            return $this->withStatements($nodes, $statements);
         }
 
         return $nodes;

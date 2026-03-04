@@ -28,11 +28,6 @@ class RemoveInterfaceVisitor extends NodeVisitorAbstract
 
     protected function removeInterfacesFromClass(Class_ $class): void
     {
-        $class->implements = array_values(array_filter($class->implements, function (\PhpParser\Node\Name $interface): bool {
-            $parts = explode('\\', $interface->toString());
-            $simpleName = end($parts);
-
-            return ! in_array($simpleName, $this->interfaces);
-        }));
+        $class->implements = array_values(array_filter($class->implements, fn (\PhpParser\Node\Name $interface): bool => ! in_array($this->simpleName($interface->toString()), $this->interfaces)));
     }
 }

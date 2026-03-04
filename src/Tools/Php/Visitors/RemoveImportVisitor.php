@@ -2,7 +2,6 @@
 
 namespace Laravel\InstallerTools\Tools\Php\Visitors;
 
-use PhpParser\Node;
 use PhpParser\Node\Stmt\Use_;
 use PhpParser\NodeVisitorAbstract;
 
@@ -21,8 +20,7 @@ class RemoveImportVisitor extends NodeVisitorAbstract
 
     public function beforeTraverse(array $nodes): ?array
     {
-        $isNamespaced = count($nodes) === 1 && $nodes[0] instanceof Node\Stmt\Namespace_;
-        $statements = $isNamespaced ? $nodes[0]->stmts : $nodes;
+        $statements = $this->getStatements($nodes);
 
         $filtered = [];
 
@@ -30,11 +28,9 @@ class RemoveImportVisitor extends NodeVisitorAbstract
             if ($stmt instanceof Use_) {
                 $remaining = array_filter($stmt->uses, function (\PhpParser\Node\UseItem $use): bool {
                     $fqcn = $use->name->toString();
-                    $parts = explode('\\', $fqcn);
-                    $simpleName = end($parts);
 
                     foreach ($this->imports as $import) {
-                        if ($fqcn === $import || $simpleName === $import) {
+                        if ($fqcn === $import || $this->simpleName($fqcn) === $import) {
                             return false;
                         }
                     }
@@ -53,12 +49,6 @@ class RemoveImportVisitor extends NodeVisitorAbstract
             $filtered[] = $stmt;
         }
 
-        if ($isNamespaced) {
-            $nodes[0]->stmts = $filtered;
-        } else {
-            return $filtered;
-        }
-
-        return $nodes;
+        return $this->withStatements($nodes, $filtered);
     }
 }
