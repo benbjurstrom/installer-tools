@@ -1,7 +1,7 @@
 <?php
 
-use Laravel\InstallerTools\PostInstall;
-use Laravel\InstallerTools\Tools\Php\PhpFile;
+use Laravel\Chisel\Chisel;
+use Laravel\Chisel\Tools\Php\PhpFile;
 
 beforeEach(function (): void {
     $this->tempDir = __DIR__.'/../tests-output/project-'.uniqid();
@@ -22,7 +22,7 @@ afterEach(function (): void {
 it('calls callback when selected value is in array', function (): void {
     $called = false;
 
-    PostInstall::in($this->tempDir)
+    Chisel::in($this->tempDir)
         ->withAnswers(json_encode(['features' => ['2fa', 'passkeys']]))
         ->selected('features', '2fa', then: function () use (&$called): void {
             $called = true;
@@ -34,7 +34,7 @@ it('calls callback when selected value is in array', function (): void {
 it('does not call callback when selected value is not in array', function (): void {
     $called = false;
 
-    PostInstall::in($this->tempDir)
+    Chisel::in($this->tempDir)
         ->withAnswers(json_encode(['features' => ['2fa']]))
         ->selected('features', 'passkeys', then: function () use (&$called): void {
             $called = true;
@@ -46,7 +46,7 @@ it('does not call callback when selected value is not in array', function (): vo
 it('calls callback when confirmed is true', function (): void {
     $called = false;
 
-    PostInstall::in($this->tempDir)
+    Chisel::in($this->tempDir)
         ->withAnswers(json_encode(['seed' => true]))
         ->confirmed('seed', then: function () use (&$called): void {
             $called = true;
@@ -58,7 +58,7 @@ it('calls callback when confirmed is true', function (): void {
 it('does not call callback when confirmed is false', function (): void {
     $called = false;
 
-    PostInstall::in($this->tempDir)
+    Chisel::in($this->tempDir)
         ->withAnswers(json_encode(['seed' => false]))
         ->confirmed('seed', then: function () use (&$called): void {
             $called = true;
@@ -70,7 +70,7 @@ it('does not call callback when confirmed is false', function (): void {
 it('calls callback when answered value matches', function (): void {
     $called = false;
 
-    PostInstall::in($this->tempDir)
+    Chisel::in($this->tempDir)
         ->withAnswers(json_encode(['stack' => 'react']))
         ->answered('stack', 'react', then: function () use (&$called): void {
             $called = true;
@@ -82,7 +82,7 @@ it('calls callback when answered value matches', function (): void {
 it('does not call callback when answered value differs', function (): void {
     $called = false;
 
-    PostInstall::in($this->tempDir)
+    Chisel::in($this->tempDir)
         ->withAnswers(json_encode(['stack' => 'vue']))
         ->answered('stack', 'react', then: function () use (&$called): void {
             $called = true;
@@ -95,7 +95,7 @@ it('copies a file', function (): void {
     mkdir($this->tempDir.'/src');
     file_put_contents($this->tempDir.'/src/original.txt', 'hello');
 
-    PostInstall::in($this->tempDir)->file('src/original.txt')->copyTo('dest/copied.txt');
+    Chisel::in($this->tempDir)->file('src/original.txt')->copyTo('dest/copied.txt');
 
     expect($this->tempDir.'/dest/copied.txt')
         ->toBeFile()
@@ -105,7 +105,7 @@ it('copies a file', function (): void {
 it('replaces content in a file', function (): void {
     file_put_contents($this->tempDir.'/config.txt', 'APP_NAME=Laravel');
 
-    PostInstall::in($this->tempDir)->file('config.txt')->replace('Laravel', 'MyApp');
+    Chisel::in($this->tempDir)->file('config.txt')->replace('Laravel', 'MyApp');
 
     expect(file_get_contents($this->tempDir.'/config.txt'))->toBe('APP_NAME=MyApp');
 });
@@ -113,7 +113,7 @@ it('replaces content in a file', function (): void {
 it('sets an env value', function (): void {
     file_put_contents($this->tempDir.'/.env', "APP_NAME=Laravel\nAPP_URL=http://localhost\n");
 
-    PostInstall::in($this->tempDir)->env('APP_NAME', 'MyApp');
+    Chisel::in($this->tempDir)->env('APP_NAME', 'MyApp');
 
     $contents = file_get_contents($this->tempDir.'/.env');
 

@@ -1,17 +1,17 @@
 <?php
 
-namespace Laravel\InstallerTools;
+namespace Laravel\Chisel;
 
 use Illuminate\Support\ServiceProvider;
-use Laravel\InstallerTools\Console\InstallFeaturesCommand;
+use Laravel\Chisel\Console\ChiselCommand;
 
-class InstallerToolsServiceProvider extends ServiceProvider
+class ChiselServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
             $this->commands([
-                InstallFeaturesCommand::class,
+                ChiselCommand::class,
             ]);
         }
     }

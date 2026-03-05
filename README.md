@@ -1,46 +1,50 @@
-# Laravel Installer Tools
+# Laravel Chisel
 
-Toolkit for building post-install customization scripts in Laravel starter kits. Starter kits ship with all features enabled; the post-install script subtracts anything the user didn't select.
+Toolkit for building post-install customization scripts in Laravel starter kits. Starter kits ship with all features enabled; the chisel script subtracts anything the user didn't select.
 
 ## How it works
 
-Each starter kit includes a `.laravel-installer/` directory with a `post-install.php` script. The script prompts the user for their preferences using [Laravel Prompts](https://laravel.com/docs/prompts), then modifies the project based on their answers.
+Each starter kit includes a `chisel.php` script. The script prompts the user for their preferences using [Laravel Prompts](https://laravel.com/docs/prompts), then modifies the project based on their answers.
 
-During `laravel new`, the installer runs the post-install script as a subprocess and then removes the `.laravel-installer/` directory. The `PostInstall` class provides the API used inside that script.
+During `laravel new`, the installer runs the chisel script as a subprocess. The `Chisel` class provides the API used inside that script.
 
-## Testing with `install:features`
+## Testing with `php artisan chisel`
 
-The package registers an `install:features` artisan command so you can test the post-install flow without running `laravel new`. Add the repository and install the package as a dev dependency in your starter kit:
+The package registers a `chisel` artisan command so you can test the chisel flow without running `laravel new`. Add the repository and install the package as a dev dependency in your starter kit:
 
 ```bash
-composer config repositories.installer-tools vcs https://github.com/benbjurstrom/installer-tools
-composer require --dev benbjurstrom/installer-tools:dev-main
+composer require --dev laravel/chisel:dev-main
 ```
 
 Then run:
 
 ```bash
-php artisan install:features
+php artisan chisel
 ```
 
-The command runs the post-install script (which prompts interactively), then rebuilds frontend assets afterward.
+The command runs the chisel script (which prompts interactively), then rebuilds frontend assets afterward.
+After a successful run, you'll be prompted to delete the chisel script. To delete it automatically, pass `--delete-script`.
 
 For CI or non-interactive use, pass answers as JSON to skip prompts:
 
 ```bash
-php artisan install:features --answers='{"auth_features": ["email-verification", "2fa"]}'
+php artisan chisel --answers='{"auth_features": ["email-verification", "2fa"]}'
 ```
 
-## Post-install script example
+```bash
+php artisan chisel --delete-script
+```
+
+## Chisel script example
 
 ```php
 <?php
 
 require getenv('LARAVEL_INSTALLER_AUTOLOADER');
 
-use Laravel\InstallerTools\PostInstall;
+use Laravel\Chisel\Chisel;
 
-$install = PostInstall::in(dirname(__DIR__))
+$install = Chisel::in(dirname(__DIR__))
     ->withAnswers($argv[1] ?? null)
     ->multiselect('auth_features', 'Which authentication features would you like to enable?', [
         'email-verification' => 'Email verification',
@@ -74,7 +78,7 @@ $install->selected('auth_features', 'email-verification',
 );
 ```
 
-When `withAnswers` receives a file path (passed by the installer or `install:features --answers`), prompts are skipped and the stored answers are used. When `null`, prompts are shown interactively.
+`withAnswers` takes a JSON string. When non-null, prompts are skipped and the decoded answers are used. When `null`, prompts are shown interactively.
 
 ## API overview
 
@@ -84,12 +88,9 @@ Prompt methods present a [Laravel Prompts](https://laravel.com/docs/prompts) que
 
 | Method | Description |
 |---|---|
-| `text($name, $label, ...)` | Free text input |
-| `password($name, $label, ...)` | Hidden text input |
 | `confirm($name, $label, ...)` | Yes/no question |
 | `select($name, $label, $options, ...)` | Single choice |
 | `multiselect($name, $label, $options, ...)` | Multiple choice |
-| `suggest($name, $label, $options, ...)` | Text with suggestions |
 
 ### Branching on answers
 

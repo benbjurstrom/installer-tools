@@ -1,6 +1,8 @@
 <?php
 
-namespace Laravel\InstallerTools\Tools;
+namespace Laravel\Chisel\Tools;
+
+use Illuminate\Process\Factory;
 
 class Composer
 {
@@ -23,10 +25,18 @@ class Composer
 
     protected function run(string ...$args): void
     {
-        $command = 'composer '.implode(' ', $args);
+        (new Factory)
+            ->path($this->directory)
+            ->forever()
+            ->run(['composer', ...$args], function (string $type, string $buffer): void {
+                if ($type === 'err') {
+                    fwrite(STDERR, $buffer);
 
-        $process = proc_open($command, [STDIN, STDOUT, STDERR], $pipes, $this->directory);
+                    return;
+                }
 
-        proc_close($process);
+                echo $buffer;
+            })
+            ->throw();
     }
 }

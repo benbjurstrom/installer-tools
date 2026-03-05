@@ -1,21 +1,22 @@
 <?php
 
-namespace Laravel\InstallerTools;
+namespace Laravel\Chisel;
 
-use Laravel\InstallerTools\Tools\Artisan;
-use Laravel\InstallerTools\Tools\Composer;
-use Laravel\InstallerTools\Tools\Config;
-use Laravel\InstallerTools\Tools\Env;
-use Laravel\InstallerTools\Tools\File;
-use Laravel\InstallerTools\Tools\Npm;
-use Laravel\InstallerTools\Tools\Php\PhpFile;
+use Illuminate\Process\Factory;
+use Laravel\Chisel\Tools\Artisan;
+use Laravel\Chisel\Tools\Composer;
+use Laravel\Chisel\Tools\Config;
+use Laravel\Chisel\Tools\Env;
+use Laravel\Chisel\Tools\File;
+use Laravel\Chisel\Tools\Npm;
+use Laravel\Chisel\Tools\Php\PhpFile;
 
 use function Laravel\Prompts\confirm as promptConfirm;
 use function Laravel\Prompts\multiselect as promptMultiselect;
 use function Laravel\Prompts\select as promptSelect;
 
 /** @phpstan-consistent-constructor */
-class PostInstall
+class Chisel
 {
     protected array $answers = [];
 
@@ -153,9 +154,19 @@ class PostInstall
 
     public function run(string $command): static
     {
-        $process = proc_open($command, [STDIN, STDOUT, STDERR], $pipes, $this->directory);
+        (new Factory)
+            ->path($this->directory)
+            ->forever()
+            ->run($command, function (string $type, string $buffer): void {
+                if ($type === 'err') {
+                    fwrite(STDERR, $buffer);
 
-        proc_close($process);
+                    return;
+                }
+
+                echo $buffer;
+            })
+            ->throw();
 
         return $this;
     }

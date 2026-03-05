@@ -1,15 +1,15 @@
 <?php
 
-namespace Laravel\InstallerTools\Tools\Php;
+namespace Laravel\Chisel\Tools\Php;
 
-use Laravel\InstallerTools\Tools\Php\Visitors\AddImportVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\AddInterfaceVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\AddMethodVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\AddTraitVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\RemoveImportVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\RemoveInterfaceVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\RemoveMethodVisitor;
-use Laravel\InstallerTools\Tools\Php\Visitors\RemoveTraitVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\AddImportVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\AddInterfaceVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\AddMethodVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\AddTraitVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\RemoveImportVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\RemoveInterfaceVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\RemoveMethodVisitor;
+use Laravel\Chisel\Tools\Php\Visitors\RemoveTraitVisitor;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\CloningVisitor;
 use PhpParser\NodeVisitorAbstract;

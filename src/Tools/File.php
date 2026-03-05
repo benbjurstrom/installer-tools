@@ -1,6 +1,6 @@
 <?php
 
-namespace Laravel\InstallerTools\Tools;
+namespace Laravel\Chisel\Tools;
 
 class File
 {

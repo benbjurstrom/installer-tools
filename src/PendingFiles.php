@@ -1,8 +1,8 @@
 <?php
 
-namespace Laravel\InstallerTools;
+namespace Laravel\Chisel;
 
-use Laravel\InstallerTools\Tools\File;
+use Laravel\Chisel\Tools\File;
 
 class PendingFiles
 {

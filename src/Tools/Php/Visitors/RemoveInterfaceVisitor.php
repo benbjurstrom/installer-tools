@@ -1,6 +1,6 @@
 <?php
 
-namespace Laravel\InstallerTools\Tools\Php\Visitors;
+namespace Laravel\Chisel\Tools\Php\Visitors;
 
 use PhpParser\Node;
 use PhpParser\Node\Name;

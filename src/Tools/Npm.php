@@ -1,6 +1,8 @@
 <?php
 
-namespace Laravel\InstallerTools\Tools;
+namespace Laravel\Chisel\Tools;
+
+use Illuminate\Process\Factory;
 
 class Npm
 {
@@ -23,10 +25,18 @@ class Npm
 
     protected function run(string ...$args): void
     {
-        $command = 'npm '.implode(' ', $args);
+        (new Factory)
+            ->path($this->directory)
+            ->forever()
+            ->run(['npm', ...$args], function (string $type, string $buffer): void {
+                if ($type === 'err') {
+                    fwrite(STDERR, $buffer);
 
-        $process = proc_open($command, [STDIN, STDOUT, STDERR], $pipes, $this->directory);
+                    return;
+                }
 
-        proc_close($process);
+                echo $buffer;
+            })
+            ->throw();
     }
 }

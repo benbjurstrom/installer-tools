@@ -1,6 +1,8 @@
 <?php
 
-namespace Laravel\InstallerTools\Tools;
+namespace Laravel\Chisel\Tools;
+
+use Illuminate\Process\Factory;
 
 class Artisan
 {
@@ -8,14 +10,19 @@ class Artisan
 
     public function run(string $command): void
     {
-        $process = proc_open(
-            'php artisan '.$command,
-            [STDIN, STDOUT, STDERR],
-            $pipes,
-            $this->directory,
-        );
+        (new Factory)
+            ->path($this->directory)
+            ->forever()
+            ->run('php artisan '.$command, function (string $type, string $buffer): void {
+                if ($type === 'err') {
+                    fwrite(STDERR, $buffer);
 
-        proc_close($process);
+                    return;
+                }
+
+                echo $buffer;
+            })
+            ->throw();
     }
 
     public function migrate(): void
