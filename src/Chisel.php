@@ -114,9 +114,9 @@ class Chisel
         return new PendingFiles(new File($this->directory), $paths);
     }
 
-    public function file(string ...$paths): PendingFiles
+    public function file(string $path): PendingFiles
     {
-        return $this->files(...$paths);
+        return $this->files($path);
     }
 
     // Package and command tools ----------------------------------------------

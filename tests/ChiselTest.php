@@ -102,6 +102,42 @@ it('copies a file', function (): void {
         ->and(file_get_contents($this->tempDir.'/dest/copied.txt'))->toBe('hello');
 });
 
+it('throws when copyTo targets multiple source paths', function (): void {
+    mkdir($this->tempDir.'/src');
+    file_put_contents($this->tempDir.'/src/a.txt', 'a');
+    file_put_contents($this->tempDir.'/src/b.txt', 'b');
+
+    expect(fn (): mixed => Chisel::in($this->tempDir)
+        ->files('src/a.txt', 'src/b.txt')
+        ->copyTo('dest/copied.txt'))
+        ->toThrow(\InvalidArgumentException::class, 'requires exactly one path');
+});
+
+it('throws when publish targets multiple source paths', function (): void {
+    mkdir($this->tempDir.'/stubs-a', 0777, true);
+    mkdir($this->tempDir.'/stubs-b', 0777, true);
+
+    expect(fn (): mixed => Chisel::in($this->tempDir)
+        ->files('stubs-a', 'stubs-b')
+        ->publish())
+        ->toThrow(\InvalidArgumentException::class, 'requires exactly one path');
+});
+
+it('supports fluent file operation chaining', function (): void {
+    file_put_contents($this->tempDir.'/fluent.txt', "name=Laravel\n// enabled=true\n");
+
+    Chisel::in($this->tempDir)
+        ->file('fluent.txt')
+        ->replace('Laravel', 'Chisel')
+        ->uncomment('enabled=true')
+        ->append("\nstatus=ok");
+
+    expect(file_get_contents($this->tempDir.'/fluent.txt'))
+        ->toContain('name=Chisel')
+        ->toContain('enabled=true')
+        ->toContain('status=ok');
+});
+
 it('replaces content in a file', function (): void {
     file_put_contents($this->tempDir.'/config.txt', 'APP_NAME=Laravel');
 

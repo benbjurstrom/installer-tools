@@ -14,11 +14,11 @@ use function Laravel\Prompts\warning;
 class ChiselCommand extends Command
 {
     protected $signature = 'chisel
-        {--path=chisel.php : Path to the chisel script}
+        {--path=chisel.php : Path to chisel.php}
         {--answers= : JSON string of answers to skip interactive prompts}
-        {--delete-script : Delete the chisel script after a successful run}';
+        {--delete-script : Delete the chisel.php after a successful run}';
 
-    protected $description = 'Run the starter kit chisel script to add or remove features';
+    protected $description = 'Run the chisel.php file to add or remove features';
 
     public function handle(): int
     {

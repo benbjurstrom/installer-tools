@@ -119,7 +119,9 @@ In JSX files, use `{/* @tag */}` / `{/* @end-tag */}` syntax.
 
 ### File operations
 
-`file(...$paths)` / `files(...$paths)` returns a `PendingFiles` instance that targets one or more files.
+`file($path)` / `files(...$paths)` returns a `PendingFiles` instance.
+`file($path)` targets a single path, while `files(...$paths)` targets many.
+File mutator methods are fluent and may be chained.
 
 | Method | Description |
 |---|---|
@@ -132,6 +134,8 @@ In JSX files, use `{/* @tag */}` / `{/* @end-tag */}` syntax.
 | `file($path)->appendAfterLine($search, $content)` | Append content after line containing a string |
 | `file($path)->uncomment($search)` | Uncomment lines matching a string |
 | `file($from)->publish()` | Publish files from a directory |
+
+`copyTo()` and `publish()` require exactly one source path.
 
 ### PHP AST modifications
 
