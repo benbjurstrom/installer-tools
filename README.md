@@ -1,14 +1,8 @@
 # Laravel Chisel
 
-Small toolkit for subtractive post-install scripts in Laravel starter kits.
+Laravel Chisel runs post-install customization scripts for Laravel starter kits.
 
-The intended flow is:
-
-1. Ship the starter kit with every optional feature present.
-2. Ask the user which features they want.
-3. Remove anything they did not select.
-
-`Laravel\Chisel\Chisel` is intentionally narrow. The script API only supports the subtractive operations used by [`example-chisel.php`](example-chisel.php), and the package still ships the `php artisan chisel` runner for executing that script inside a Laravel app.
+A starter kit can ship with optional features already present, prompt for the user's choices during installation, and remove anything they did not select.
 
 ## Install
 
@@ -16,27 +10,33 @@ The intended flow is:
 composer require --dev laravel/chisel:dev-main
 ```
 
-## Run The Script
+## Running A Chisel Script
 
-The package still registers a `chisel` artisan command. That is the expected way to run a starter kit script locally.
+Create a `chisel.php` file in the project root, then run:
 
 ```bash
 php artisan chisel
 ```
 
-To run the example file in this repository instead of `chisel.php`, point the command at it:
+Use `--path` to run a different script:
 
 ```bash
 php artisan chisel --path=example-chisel.php
 ```
 
-To skip prompts, pass answers as JSON:
+Use `--answers` to pass preselected answers as JSON:
 
 ```bash
 php artisan chisel --path=example-chisel.php --answers='{"auth_features":["email-verification"]}'
 ```
 
-Pass `--delete-script` to remove the script after a successful run.
+Use `--delete-script` to delete the script after a successful run:
+
+```bash
+php artisan chisel --delete-script
+```
+
+The command runs the chisel script, then runs `npm install` and `npm run build`.
 
 ## Example
 
@@ -84,11 +84,11 @@ $c->selected('auth_features', 'email-verification',
 );
 ```
 
-`withAnswers()` accepts a JSON string. Pass `null` to prompt interactively, or pass a JSON payload in `$argv[1]` to skip prompts in non-interactive runs.
+`withAnswers()` accepts a JSON string. Pass `null` to prompt interactively, or pass a JSON payload in `$argv[1]` to skip prompts.
 
-## Supported API
+## API
 
-### Prompts and branching
+### Prompts And Branching
 
 | Method | Purpose |
 |---|---|
@@ -96,35 +96,35 @@ $c->selected('auth_features', 'email-verification',
 | `multiselect($name, $label, $options, $default = [], $hint = '', $required = false)` | Ask for feature selections |
 | `selected($key, $value, then:, else:)` | Branch on a multiselect answer |
 
-### File mutations
+### File Mutations
 
 `file($path)` targets one file. `files(...$paths)` targets many files.
 
 | Method | Purpose |
 |---|---|
-| `replace($search, $replace)` | String replacement |
-| `removeLinesContaining($content)` | Remove matching lines |
-| `removeSectionMarkers($tag)` | Remove markers and keep the code inside |
-| `removeSection($tag)` | Remove the marked section entirely |
+| `replace($search, $replace)` | Replace a string |
+| `removeLinesContaining($content)` | Remove lines containing a string |
+| `removeSectionMarkers($tag)` | Remove section markers and keep the content |
+| `removeSection($tag)` | Remove the section markers and the content inside them |
 | `delete()` | Delete the targeted files |
 
-### PHP AST removals
+### PHP File Mutations
 
-`phpFile($path)` batches AST edits and saves automatically when the object is destroyed.
+`phpFile($path)` applies AST-based edits and saves automatically when the object is destroyed.
 
 | Method | Purpose |
 |---|---|
 | `removeImport($class)` | Remove a `use` statement |
-| `removeTrait($trait)` | Remove a trait use from the class |
+| `removeTrait($trait)` | Remove a trait from the class |
 | `removeInterface($interface)` | Remove an implemented interface |
 
-### Package manager
+### npm
 
 | Method | Purpose |
 |---|---|
 | `npm()->remove(...$packages)` | Remove npm packages |
 
-## Section markers
+## Section Markers
 
 Use comment pairs to wrap optional code:
 
@@ -142,5 +142,5 @@ JS and JSX files can use block comments with braces:
 {/* @end-passkeys */}
 ```
 
-`removeSectionMarkers('passkeys')` keeps the code and strips the markers.
-`removeSection('passkeys')` removes both the markers and the enclosed code.
+`removeSectionMarkers('passkeys')` keeps the code and removes the markers.
+`removeSection('passkeys')` removes both the markers and the code inside them.
