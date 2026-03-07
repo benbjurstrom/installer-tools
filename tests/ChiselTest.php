@@ -10,205 +10,148 @@ beforeEach(function (): void {
 });
 
 afterEach(function (): void {
-    if (file_exists($this->tempDir)) {
-        if (PHP_OS_FAMILY === 'Windows') {
-            system("rd /s /q \"{$this->tempDir}\"");
-        } else {
-            system("rm -rf \"{$this->tempDir}\"");
-        }
+    if (! file_exists($this->tempDir)) {
+        return;
     }
+
+    if (PHP_OS_FAMILY === 'Windows') {
+        system("rd /s /q \"{$this->tempDir}\"");
+
+        return;
+    }
+
+    system("rm -rf \"{$this->tempDir}\"");
 });
 
-it('calls callback when selected value is in array', function (): void {
-    $called = false;
+it('branches on selected multiselect answers', function (): void {
+    $branches = [];
 
     Chisel::in($this->tempDir)
-        ->withAnswers(json_encode(['features' => ['2fa', 'passkeys']]))
-        ->selected('features', '2fa', then: function () use (&$called): void {
-            $called = true;
+        ->withAnswers(json_encode(['auth_features' => ['email-verification']]))
+        ->multiselect('auth_features', 'Which authentication features would you like to enable?', [
+            'email-verification' => 'Email verification',
+            '2fa' => 'Two-factor authentication',
+            'passkeys' => 'Passkeys',
+        ], hint: 'Use space to select, enter to confirm.')
+        ->selected('auth_features', 'email-verification', then: function (Chisel $chisel) use (&$branches): void {
+            $branches[] = $chisel::class;
+        })
+        ->selected('auth_features', 'passkeys', else: function (Chisel $chisel) use (&$branches): void {
+            $branches[] = $chisel::class;
         });
 
-    expect($called)->toBeTrue();
+    expect($branches)->toBe([Chisel::class, Chisel::class]);
 });
 
-it('does not call callback when selected value is not in array', function (): void {
-    $called = false;
+it('applies subtractive file mutations', function (): void {
+    mkdir($this->tempDir.'/config', 0777, true);
+    mkdir($this->tempDir.'/resources/js/pages/auth', 0777, true);
+    mkdir($this->tempDir.'/routes', 0777, true);
+    mkdir($this->tempDir.'/tests/Feature/Auth', 0777, true);
 
-    Chisel::in($this->tempDir)
-        ->withAnswers(json_encode(['features' => ['2fa']]))
-        ->selected('features', 'passkeys', then: function () use (&$called): void {
-            $called = true;
-        });
+    file_put_contents($this->tempDir.'/composer.json', '"laravel/fortify": "dev-add-passkey-support#242c342"');
+    file_put_contents($this->tempDir.'/config/fortify.php', "Features::registration(),\nFeatures::emailVerification(),\nFeatures::resetPasswords(),\n");
+    file_put_contents($this->tempDir.'/resources/js/pages/auth/login.tsx', "{/* @passkeys */}\n<button>Passkey</button>\n{/* @end-passkeys */}\n");
+    file_put_contents($this->tempDir.'/routes/settings.php', "before\n/* @2fa */\nremove me\n/* @end-2fa */\nafter\n");
+    file_put_contents($this->tempDir.'/routes/profile.php', "start\n/* @2fa */\nremove me too\n/* @end-2fa */\nfinish\n");
+    file_put_contents($this->tempDir.'/tests/Feature/Auth/PasskeyTest.php', 'x');
+    file_put_contents($this->tempDir.'/tests/Feature/Auth/TwoFactorTest.php', 'y');
 
-    expect($called)->toBeFalse();
+    $chisel = Chisel::in($this->tempDir);
+
+    $chisel->file('composer.json')->replace(
+        '"laravel/fortify": "dev-add-passkey-support#242c342"',
+        '"laravel/fortify": "^1.30"',
+    );
+    $chisel->file('config/fortify.php')->removeLinesContaining('Features::emailVerification()');
+    $chisel->file('resources/js/pages/auth/login.tsx')->removeSectionMarkers('passkeys');
+    $chisel->files('routes/settings.php', 'routes/profile.php')->removeSection('2fa');
+    $chisel->files(
+        'tests/Feature/Auth/PasskeyTest.php',
+        'tests/Feature/Auth/TwoFactorTest.php',
+    )->delete();
+
+    expect(file_get_contents($this->tempDir.'/composer.json'))->toBe('"laravel/fortify": "^1.30"')
+        ->and(file_get_contents($this->tempDir.'/config/fortify.php'))->not->toContain('Features::emailVerification()')
+        ->and(file_get_contents($this->tempDir.'/resources/js/pages/auth/login.tsx'))->toBe("<button>Passkey</button>\n")
+        ->and(file_get_contents($this->tempDir.'/routes/settings.php'))->toBe("before\nafter\n")
+        ->and(file_get_contents($this->tempDir.'/routes/profile.php'))->toBe("start\nfinish\n")
+        ->and($this->tempDir.'/tests/Feature/Auth/PasskeyTest.php')->not->toBeFile()
+        ->and($this->tempDir.'/tests/Feature/Auth/TwoFactorTest.php')->not->toBeFile();
 });
 
-it('calls callback when confirmed is true', function (): void {
-    $called = false;
+it('runs npm remove in the project directory', function (): void {
+    $bin = $this->tempDir.'/bin';
+    $log = $this->tempDir.'/npm.log';
 
-    Chisel::in($this->tempDir)
-        ->withAnswers(json_encode(['seed' => true]))
-        ->confirmed('seed', then: function () use (&$called): void {
-            $called = true;
-        });
+    mkdir($bin, 0777, true);
 
-    expect($called)->toBeTrue();
+    file_put_contents($bin.'/npm', "#!/bin/sh\nprintf '%s\n' \"$(pwd)|$*\" > \"$log\"\n");
+    chmod($bin.'/npm', 0755);
+
+    $originalPath = getenv('PATH') ?: '';
+    putenv('PATH='.$bin.':'.$originalPath);
+
+    try {
+        Chisel::in($this->tempDir)->npm()->remove('@laravel/passkeys', 'input-otp');
+    } finally {
+        putenv('PATH='.$originalPath);
+    }
+
+    expect(file_get_contents($log))
+        ->toContain(realpath($this->tempDir))
+        ->toContain('remove @laravel/passkeys input-otp');
 });
 
-it('does not call callback when confirmed is false', function (): void {
-    $called = false;
+it('removes imports interfaces and traits from php files on destruct', function (): void {
+    $path = $this->tempDir.'/User.php';
 
-    Chisel::in($this->tempDir)
-        ->withAnswers(json_encode(['seed' => false]))
-        ->confirmed('seed', then: function () use (&$called): void {
-            $called = true;
-        });
+    file_put_contents($path, <<<'PHP'
+<?php
 
-    expect($called)->toBeFalse();
-});
+namespace App\Models;
 
-it('calls callback when answered value matches', function (): void {
-    $called = false;
+use Illuminate\Database\Eloquent\Model, Illuminate\Contracts\Auth\MustVerifyEmail;
+use Laravel\Fortify\TwoFactorAuthenticatable;
+use Laravel\Sanctum\HasApiTokens;
+use Tests\Fixtures\HasFactory;
 
-    Chisel::in($this->tempDir)
-        ->withAnswers(json_encode(['stack' => 'react']))
-        ->answered('stack', 'react', then: function () use (&$called): void {
-            $called = true;
-        });
+class User extends Model implements MustVerifyEmail
+{
+    use TwoFactorAuthenticatable, HasApiTokens;
+    use HasFactory;
 
-    expect($called)->toBeTrue();
-});
+    protected $table = 'users';
+}
+PHP);
 
-it('does not call callback when answered value differs', function (): void {
-    $called = false;
+    $file = Chisel::in($this->tempDir)
+        ->phpFile('User.php')
+        ->removeImport('Illuminate\Contracts\Auth\MustVerifyEmail')
+        ->removeTrait('TwoFactorAuthenticatable')
+        ->removeTrait('HasFactory')
+        ->removeInterface('MustVerifyEmail');
 
-    Chisel::in($this->tempDir)
-        ->withAnswers(json_encode(['stack' => 'vue']))
-        ->answered('stack', 'react', then: function () use (&$called): void {
-            $called = true;
-        });
+    unset($file);
 
-    expect($called)->toBeFalse();
-});
-
-it('copies a file', function (): void {
-    mkdir($this->tempDir.'/src');
-    file_put_contents($this->tempDir.'/src/original.txt', 'hello');
-
-    Chisel::in($this->tempDir)->file('src/original.txt')->copyTo('dest/copied.txt');
-
-    expect($this->tempDir.'/dest/copied.txt')
-        ->toBeFile()
-        ->and(file_get_contents($this->tempDir.'/dest/copied.txt'))->toBe('hello');
-});
-
-it('throws when copyTo targets multiple source paths', function (): void {
-    mkdir($this->tempDir.'/src');
-    file_put_contents($this->tempDir.'/src/a.txt', 'a');
-    file_put_contents($this->tempDir.'/src/b.txt', 'b');
-
-    expect(fn (): mixed => Chisel::in($this->tempDir)
-        ->files('src/a.txt', 'src/b.txt')
-        ->copyTo('dest/copied.txt'))
-        ->toThrow(\InvalidArgumentException::class, 'requires exactly one path');
-});
-
-it('throws when publish targets multiple source paths', function (): void {
-    mkdir($this->tempDir.'/stubs-a', 0777, true);
-    mkdir($this->tempDir.'/stubs-b', 0777, true);
-
-    expect(fn (): mixed => Chisel::in($this->tempDir)
-        ->files('stubs-a', 'stubs-b')
-        ->publish())
-        ->toThrow(\InvalidArgumentException::class, 'requires exactly one path');
-});
-
-it('supports fluent file operation chaining', function (): void {
-    file_put_contents($this->tempDir.'/fluent.txt', "name=Laravel\n// enabled=true\n");
-
-    Chisel::in($this->tempDir)
-        ->file('fluent.txt')
-        ->replace('Laravel', 'Chisel')
-        ->uncomment('enabled=true')
-        ->append("\nstatus=ok");
-
-    expect(file_get_contents($this->tempDir.'/fluent.txt'))
-        ->toContain('name=Chisel')
-        ->toContain('enabled=true')
-        ->toContain('status=ok');
-});
-
-it('replaces content in a file', function (): void {
-    file_put_contents($this->tempDir.'/config.txt', 'APP_NAME=Laravel');
-
-    Chisel::in($this->tempDir)->file('config.txt')->replace('Laravel', 'MyApp');
-
-    expect(file_get_contents($this->tempDir.'/config.txt'))->toBe('APP_NAME=MyApp');
-});
-
-it('sets an env value', function (): void {
-    file_put_contents($this->tempDir.'/.env', "APP_NAME=Laravel\nAPP_URL=http://localhost\n");
-
-    Chisel::in($this->tempDir)->env('APP_NAME', 'MyApp');
-
-    $contents = file_get_contents($this->tempDir.'/.env');
+    $contents = file_get_contents($path);
 
     expect($contents)
-        ->toContain('APP_NAME=MyApp')
-        ->toContain('APP_URL=http://localhost');
+        ->toContain('use Illuminate\Database\Eloquent\Model;')
+        ->toContain('use HasApiTokens;')
+        ->not->toContain('implements MustVerifyEmail')
+        ->not->toContain('use TwoFactorAuthenticatable,')
+        ->not->toContain('    use HasFactory;');
 });
 
-it('adds a trait to a php file', function (): void {
-    $fixture = $this->tempDir.'/User.php';
-    copy(__DIR__.'/fixtures/php/SampleClass.php.stub', $fixture);
+it('can save a php file with no queued edits', function (): void {
+    $path = $this->tempDir.'/SampleClass.php';
 
-    (new PhpFile($fixture))->addTrait('SoftDeletes')->save();
+    copy(__DIR__.'/fixtures/php/SampleClass.php.stub', $path);
 
-    expect(file_get_contents($fixture))->toContain('use SoftDeletes;');
-});
+    $original = file_get_contents($path);
 
-it('adds an import to a php file', function (): void {
-    $fixture = $this->tempDir.'/User.php';
-    copy(__DIR__.'/fixtures/php/SampleClass.php.stub', $fixture);
+    (new PhpFile($path))->save();
 
-    (new PhpFile($fixture))->addImport('Illuminate\Database\Eloquent\SoftDeletes')->save();
-
-    expect(file_get_contents($fixture))->toContain('use Illuminate\Database\Eloquent\SoftDeletes;');
-});
-
-it('removes a trait from a php file', function (): void {
-    $fixture = $this->tempDir.'/Item.php';
-    copy(__DIR__.'/fixtures/php/ClassWithTrait.php.stub', $fixture);
-
-    (new PhpFile($fixture))->removeTrait('SoftDeletes')->save();
-
-    expect(file_get_contents($fixture))->not->toContain('use SoftDeletes;');
-});
-
-it('adds an interface to a php file', function (): void {
-    $fixture = $this->tempDir.'/User.php';
-    copy(__DIR__.'/fixtures/php/SampleClass.php.stub', $fixture);
-
-    (new PhpFile($fixture))->addInterface('MustVerifyEmail')->save();
-
-    expect(file_get_contents($fixture))->toContain('implements MustVerifyEmail');
-});
-
-it('does not add a duplicate interface', function (): void {
-    $fixture = $this->tempDir.'/User.php';
-    copy(__DIR__.'/fixtures/php/SampleClass.php.stub', $fixture);
-
-    (new PhpFile($fixture))->addInterface('MustVerifyEmail')->save();
-    (new PhpFile($fixture))->addInterface('MustVerifyEmail')->save();
-
-    expect(substr_count(file_get_contents($fixture), 'MustVerifyEmail'))->toBe(1);
-});
-
-it('does not add a duplicate trait', function (): void {
-    $fixture = $this->tempDir.'/Item.php';
-    copy(__DIR__.'/fixtures/php/ClassWithTrait.php.stub', $fixture);
-
-    (new PhpFile($fixture))->addTrait('SoftDeletes')->save();
-
-    expect(preg_match_all('/^\s+use\s+SoftDeletes;$/m', file_get_contents($fixture)))->toBe(1);
+    expect(file_get_contents($path))->toBe($original);
 });

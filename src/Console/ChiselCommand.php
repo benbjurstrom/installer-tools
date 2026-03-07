@@ -31,8 +31,6 @@ class ChiselCommand extends Command
             return self::FAILURE;
         }
 
-        // ── Confirm destructive action (interactive only) ────────────────
-
         if (! $this->option('answers')) {
             warning('This will modify files in: '.$directory);
             note('Make sure you can restore changes (e.g. git checkout).');
@@ -41,8 +39,6 @@ class ChiselCommand extends Command
                 return self::SUCCESS;
             }
         }
-
-        // ── Run chisel script ────────────────────────────────────────────
 
         $process = (new Factory)
             ->path($directory)

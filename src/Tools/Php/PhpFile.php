@@ -2,13 +2,8 @@
 
 namespace Laravel\Chisel\Tools\Php;
 
-use Laravel\Chisel\Tools\Php\Visitors\AddImportVisitor;
-use Laravel\Chisel\Tools\Php\Visitors\AddInterfaceVisitor;
-use Laravel\Chisel\Tools\Php\Visitors\AddMethodVisitor;
-use Laravel\Chisel\Tools\Php\Visitors\AddTraitVisitor;
 use Laravel\Chisel\Tools\Php\Visitors\RemoveImportVisitor;
 use Laravel\Chisel\Tools\Php\Visitors\RemoveInterfaceVisitor;
-use Laravel\Chisel\Tools\Php\Visitors\RemoveMethodVisitor;
 use Laravel\Chisel\Tools\Php\Visitors\RemoveTraitVisitor;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\CloningVisitor;
@@ -23,23 +18,9 @@ class PhpFile
 
     public function __construct(protected string $path) {}
 
-    public function addTrait(string $trait): static
-    {
-        $this->edits[] = new AddTraitVisitor($trait);
-
-        return $this;
-    }
-
     public function removeTrait(string $trait): static
     {
         $this->edits[] = new RemoveTraitVisitor($trait);
-
-        return $this;
-    }
-
-    public function addInterface(string $interface): static
-    {
-        $this->edits[] = new AddInterfaceVisitor($interface);
 
         return $this;
     }
@@ -51,30 +32,9 @@ class PhpFile
         return $this;
     }
 
-    public function addImport(string $class): static
-    {
-        $this->edits[] = new AddImportVisitor($class);
-
-        return $this;
-    }
-
     public function removeImport(string $class): static
     {
         $this->edits[] = new RemoveImportVisitor($class);
-
-        return $this;
-    }
-
-    public function addMethod(string $code): static
-    {
-        $this->edits[] = new AddMethodVisitor($code);
-
-        return $this;
-    }
-
-    public function removeMethod(string $name): static
-    {
-        $this->edits[] = new RemoveMethodVisitor($name);
 
         return $this;
     }

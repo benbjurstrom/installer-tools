@@ -1,41 +1,44 @@
 # Laravel Chisel
 
-Toolkit for building post-install customization scripts in Laravel starter kits. Starter kits ship with all features enabled; the chisel script subtracts anything the user didn't select.
+Small toolkit for subtractive post-install scripts in Laravel starter kits.
 
-## How it works
+The intended flow is:
 
-Each starter kit includes a `chisel.php` script. The script prompts the user for their preferences using [Laravel Prompts](https://laravel.com/docs/prompts), then modifies the project based on their answers.
+1. Ship the starter kit with every optional feature present.
+2. Ask the user which features they want.
+3. Remove anything they did not select.
 
-During `laravel new`, the installer runs the chisel script as a subprocess. The `Chisel` class provides the API used inside that script.
+`Laravel\Chisel\Chisel` is intentionally narrow. The script API only supports the subtractive operations used by [`example-chisel.php`](example-chisel.php), and the package still ships the `php artisan chisel` runner for executing that script inside a Laravel app.
 
-## Testing with `php artisan chisel`
-
-The package registers a `chisel` artisan command so you can test the chisel flow without running `laravel new`. Add the repository and install the package as a dev dependency in your starter kit:
+## Install
 
 ```bash
 composer require --dev laravel/chisel:dev-main
 ```
 
-Then run:
+## Run The Script
+
+The package still registers a `chisel` artisan command. That is the expected way to run a starter kit script locally.
 
 ```bash
 php artisan chisel
 ```
 
-The command runs the chisel script (which prompts interactively), then rebuilds frontend assets afterward.
-After a successful run, you'll be prompted to delete the chisel script. To delete it automatically, pass `--delete-script`.
-
-For CI or non-interactive use, pass answers as JSON to skip prompts:
+To run the example file in this repository instead of `chisel.php`, point the command at it:
 
 ```bash
-php artisan chisel --answers='{"auth_features": ["email-verification", "2fa"]}'
+php artisan chisel --path=example-chisel.php
 ```
+
+To skip prompts, pass answers as JSON:
 
 ```bash
-php artisan chisel --delete-script
+php artisan chisel --path=example-chisel.php --answers='{"auth_features":["email-verification"]}'
 ```
 
-## Chisel script example
+Pass `--delete-script` to remove the script after a successful run.
+
+## Example
 
 ```php
 <?php
@@ -44,121 +47,100 @@ require getenv('LARAVEL_INSTALLER_AUTOLOADER');
 
 use Laravel\Chisel\Chisel;
 
-$install = Chisel::in(dirname(__DIR__))
+$c = Chisel::in(dirname(__DIR__))
     ->withAnswers($argv[1] ?? null)
     ->multiselect('auth_features', 'Which authentication features would you like to enable?', [
         'email-verification' => 'Email verification',
         '2fa' => 'Two-factor authentication',
+        'passkeys' => 'Passkeys',
     ], hint: 'Use space to select, enter to confirm.');
 
-$install->selected('auth_features', 'email-verification',
-    then: function ($install) {
-        // Feature selected — remove the section markers, keep the code
-        $install->files(
-            'app/Providers/FortifyServiceProvider.php',
+$c->selected('auth_features', 'email-verification',
+    then: function (Chisel $c) {
+        $c->files(
             'resources/js/pages/settings/profile.tsx',
+            'app/Providers/FortifyServiceProvider.php',
         )->removeSectionMarkers('email-verification');
     },
-    else: function ($install) {
-        // Feature NOT selected — remove the code and related files
-        $install->phpFile('app/Models/User.php')
+    else: function (Chisel $c) {
+        $c->phpFile('app/Models/User.php')
             ->removeImport('Illuminate\Contracts\Auth\MustVerifyEmail')
             ->removeInterface('MustVerifyEmail');
 
-        $install->files(
+        $c->file('config/fortify.php')->removeLinesContaining('Features::emailVerification()');
+
+        $c->files(
             'app/Providers/FortifyServiceProvider.php',
             'resources/js/pages/settings/profile.tsx',
         )->removeSection('email-verification');
 
-        $install->files(
+        $c->files(
             'resources/js/components/email-verification-notice.tsx',
+            'resources/js/pages/auth/verify-email.tsx',
             'tests/Feature/Auth/EmailVerificationTest.php',
+            'tests/Feature/Auth/VerificationNotificationTest.php',
         )->delete();
     },
 );
 ```
 
-`withAnswers` takes a JSON string. When non-null, prompts are skipped and the decoded answers are used. When `null`, prompts are shown interactively.
+`withAnswers()` accepts a JSON string. Pass `null` to prompt interactively, or pass a JSON payload in `$argv[1]` to skip prompts in non-interactive runs.
 
-## API overview
+## Supported API
 
-### Prompts
+### Prompts and branching
 
-Prompt methods present a [Laravel Prompts](https://laravel.com/docs/prompts) question and store the answer. If answers were pre-supplied via `withAnswers`, the prompt is skipped.
-
-| Method | Description |
+| Method | Purpose |
 |---|---|
-| `confirm($name, $label, ...)` | Yes/no question |
-| `select($name, $label, $options, ...)` | Single choice |
-| `multiselect($name, $label, $options, ...)` | Multiple choice |
+| `withAnswers(?string $json)` | Hydrate answers from JSON |
+| `multiselect($name, $label, $options, $default = [], $hint = '', $required = false)` | Ask for feature selections |
+| `selected($key, $value, then:, else:)` | Branch on a multiselect answer |
 
-### Branching on answers
+### File mutations
 
-| Method | Description |
+`file($path)` targets one file. `files(...$paths)` targets many files.
+
+| Method | Purpose |
 |---|---|
-| `selected($key, $value, then:, else:)` | Runs `then` if `$value` is in the multiselect answer for `$key`, otherwise runs `else` |
-| `confirmed($key, then:, else:)` | Runs `then` if the confirm answer for `$key` is true |
-| `answered($key, $value, then:, else:)` | Runs `then` if the answer for `$key` exactly equals `$value` |
+| `replace($search, $replace)` | String replacement |
+| `removeLinesContaining($content)` | Remove matching lines |
+| `removeSectionMarkers($tag)` | Remove markers and keep the code inside |
+| `removeSection($tag)` | Remove the marked section entirely |
+| `delete()` | Delete the targeted files |
 
-### Section markers
+### PHP AST removals
 
-Section markers are comment pairs that delimit feature-specific code:
+`phpFile($path)` batches AST edits and saves automatically when the object is destroyed.
+
+| Method | Purpose |
+|---|---|
+| `removeImport($class)` | Remove a `use` statement |
+| `removeTrait($trait)` | Remove a trait use from the class |
+| `removeInterface($interface)` | Remove an implemented interface |
+
+### Package manager
+
+| Method | Purpose |
+|---|---|
+| `npm()->remove(...$packages)` | Remove npm packages |
+
+## Section markers
+
+Use comment pairs to wrap optional code:
 
 ```php
-/* @email-verification */
-Fortify::verifyEmailView(fn () => Inertia::render('auth/verify-email'));
-/* @end-email-verification */
+/* @passkeys */
+Fortify::authenticateUsingPasskeys();
+/* @end-passkeys */
 ```
 
-In JSX files, use `{/* @tag */}` / `{/* @end-tag */}` syntax.
+JS and JSX files can use block comments with braces:
 
-| Method | Description |
-|---|---|
-| `files(...$paths)->removeSectionMarkers($tag)` | Remove the markers, keep the code between them |
-| `files(...$paths)->removeSection($tag)` | Remove the markers and the code between them |
+```tsx
+{/* @passkeys */}
+<PasskeyButton />
+{/* @end-passkeys */}
+```
 
-### File operations
-
-`file($path)` / `files(...$paths)` returns a `PendingFiles` instance.
-`file($path)` targets a single path, while `files(...$paths)` targets many.
-File mutator methods are fluent and may be chained.
-
-| Method | Description |
-|---|---|
-| `file($from)->copyTo($to)` | Copy a file |
-| `files(...$paths)->delete()` | Delete files |
-| `file($path)->replace($search, $replace)` | String replacement |
-| `file($path)->removeLinesContaining($content)` | Remove lines containing a string (single-line targets only) |
-| `file($path)->replaceLine($search, $replace)` | Replace the entire line containing a string |
-| `file($path)->append($content)` | Append to a file |
-| `file($path)->appendAfterLine($search, $content)` | Append content after line containing a string |
-| `file($path)->uncomment($search)` | Uncomment lines matching a string |
-| `file($from)->publish()` | Publish files from a directory |
-
-`copyTo()` and `publish()` require exactly one source path.
-
-### PHP AST modifications
-
-`$kit->phpFile($path)` returns a `PhpFile` instance for AST-based edits (using nikic/php-parser). Edits are batched and saved automatically.
-
-| Method | Description |
-|---|---|
-| `addImport($class)` / `removeImport($class)` | Add or remove a `use` statement |
-| `addTrait($trait)` / `removeTrait($trait)` | Add or remove a trait use |
-| `addInterface($iface)` / `removeInterface($iface)` | Add or remove an interface |
-| `addMethod($code)` / `removeMethod($name)` | Add or remove a method |
-
-### Package and environment tools
-
-| Method | Description |
-|---|---|
-| `composer()->require(...$pkgs)` | Require composer packages |
-| `composer()->requireDev(...$pkgs)` | Require dev composer packages |
-| `composer()->remove(...$pkgs)` | Remove composer packages |
-| `npm()->install(...$pkgs)` | Install npm packages |
-| `npm()->installDev(...$pkgs)` | Install dev npm packages |
-| `npm()->remove(...$pkgs)` | Remove npm packages |
-| `artisan($command)` | Run an artisan command |
-| `env($key, $value)` | Set a `.env` value |
-| `config($file, $key, $value)` | Set a config value |
-| `run($command)` | Run an arbitrary shell command |
+`removeSectionMarkers('passkeys')` keeps the code and strips the markers.
+`removeSection('passkeys')` removes both the markers and the enclosed code.
