@@ -41,34 +41,42 @@ class File
     }
 
     /**
-     * @return array{string, string}
+     * @return array{start: array<int, string>, end: array<int, string>}
      */
     protected function blockPatterns(string $tag): array
     {
         $escapedTag = preg_quote($tag, '/');
 
         return [
-            '/^\s*\{?\/\*\s*@'.$escapedTag.'\s*\*\/\}?\s*$/',
-            '/^\s*\{?\/\*\s*@end-'.$escapedTag.'\s*\*\/\}?\s*$/',
+            'start' => [
+                '/^\s*\{?\/\*\s*@'.$escapedTag.'\s*\*\/\}?\s*$/',
+                '/^\s*<!--\s*@'.$escapedTag.'\s*-->\s*$/',
+                '/^\s*\{\{--\s*@'.$escapedTag.'\s*--\}\}\s*$/',
+            ],
+            'end' => [
+                '/^\s*\{?\/\*\s*@end-'.$escapedTag.'\s*\*\/\}?\s*$/',
+                '/^\s*<!--\s*@end-'.$escapedTag.'\s*-->\s*$/',
+                '/^\s*\{\{--\s*@end-'.$escapedTag.'\s*--\}\}\s*$/',
+            ],
         ];
     }
 
     protected function rewriteSection(string $file, string $tag, bool $keepContents): void
     {
         $lines = explode("\n", $this->read($file));
-        [$startPattern, $endPattern] = $this->blockPatterns($tag);
+        ['start' => $startPatterns, 'end' => $endPatterns] = $this->blockPatterns($tag);
 
         $result = [];
         $inBlock = false;
 
         foreach ($lines as $line) {
-            if (preg_match($startPattern, $line)) {
+            if ($this->matchesAnyPattern($line, $startPatterns)) {
                 $inBlock = true;
 
                 continue;
             }
 
-            if ($inBlock && preg_match($endPattern, $line)) {
+            if ($inBlock && $this->matchesAnyPattern($line, $endPatterns)) {
                 $inBlock = false;
 
                 continue;
@@ -80,6 +88,20 @@ class File
         }
 
         $this->write($file, implode("\n", $result));
+    }
+
+    /**
+     * @param  array<int, string>  $patterns
+     */
+    protected function matchesAnyPattern(string $line, array $patterns): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $line)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     protected function read(string $file): string
